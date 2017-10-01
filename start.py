@@ -18,11 +18,19 @@ COMPOSE_YML = SCRIPT_PATH + '/docker-compose.yml'
 NGINX_PATH = SCRIPT_PATH + "/nginx/"
 NGINX_CONF = NGINX_PATH + "conf.d/"
 
+VOLUME_STR = "{}:{}"
+
 DB_PORTS = {
     "redis": "6379",
     "mongo": "27017",
     "mysql": "3306"
 }
+DB_DATA_PATH = {
+    "mysql": "/var/lib/mysql",
+    "redis": "/data",
+    "mongo": "/data/db"
+}
+DB_VOLUME = "~/.dockerize/data/{}"
 
 def printMessage(msg):
     msgLen = len(msg) + 10
@@ -167,7 +175,7 @@ def writeNodeJSService(project, repo):
                 },
                 "working_dir": "/usr/src/app/",
                 "volumes": [
-                    repoPath + ':/usr/src/app/',
+                    VOLUME_STR.format(repoPath, "/usr/src/app"),
                     '/usr/src/app/node_modules'
                 ],
                 "networks": {
@@ -272,7 +280,7 @@ def writeNginxCompose(project):
                     "volumes_from": volumesLink,
                     "links": volumesLink,
                     "volumes": [
-                        "./nginx/conf.d:/etc/nginx/conf.d"
+                        VOLUME_STR.format("./nginx/conf.d", "/etc/nginx/conf.d")
                     ]
                 }
             }
@@ -336,6 +344,7 @@ def writeDBCompose(project, dbs):
     if len(dbs):
         try:
             for db in dbs:
+                volume = DB_VOLUME.format(db)
                 dataToWrite = {
                     db: {
                         "build": "./" + db + "/",
@@ -346,6 +355,9 @@ def writeDBCompose(project, dbs):
                                 ]
                             }
                         },
+                        "volumes": [
+                            VOLUME_STR.format(volume, DB_DATA_PATH[db])
+                        ],
                         "ports": [
                             DB_PORTS[db]+":"+DB_PORTS[db]
                         ]
