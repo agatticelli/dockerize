@@ -20,7 +20,8 @@ NGINX_CONF = NGINX_PATH + "conf.d/"
 
 DB_PORTS = {
     "redis": "6379",
-    "mongo": "27017"
+    "mongo": "27017",
+    "mysql": "3306"
 }
 
 def printMessage(msg):
@@ -107,7 +108,7 @@ def writeJavaService(project, repo):
         else:
             # Assumes standard
             pass
-        
+
         aliases.append(domain)
 
         dataToWrite = {

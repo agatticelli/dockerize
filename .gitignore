@@ -1,5 +1,10 @@
 .DS_Store
+
 dockerson.json
-nginx/conf.d
-/plugins
 docker-compose.yml
+
+/nginx/conf.d
+entrypoint
+/plugins
+
+!.gitkeep
