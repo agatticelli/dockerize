@@ -89,6 +89,54 @@ def json2yaml(json, level=0):
     return to_print
 
 
+def writeJavaService(project, repo):
+    printMessage("Writing Java Service")
+    try:
+        file = open(COMPOSE_YML, 'a')
+        repoName = repo['name']
+        repoPath = repo['path']
+        aliases = []
+
+        if "domains" in repo:
+            domain = repo['mainDomain']
+        else:
+            domain = repoName + '.app'
+
+        if proxyStrategy == "inner":
+            domain += ".inner"
+        else:
+            # Assumes standard
+            pass
+        
+        aliases.append(domain)
+
+        dataToWrite = {
+            repoName: {
+                "build": {
+                    "context": repoPath,
+                    "dockerfile": SCRIPT_PATH + "/java/Dockerfile"
+                },
+                "working_dir": "/usr/src/app/",
+                "networks": {
+                    project: {
+                        "aliases": aliases
+                    }
+                }
+            }
+        }
+        if "hostname" in repo:
+            dataToWrite[repoName]["hostname"] = repo["hostname"]
+
+        file.write( os.linesep * 2 + json2yaml(dataToWrite, 1) )
+        print "DONE!\n\n"
+    except Exception, e:
+        print "Write Java Service Error ("+ project +"):", e
+        sys.exit(1)
+    finally:
+        if file:
+            file.close()
+
+
 def writeNodeJSService(project, repo):
     printMessage("Writing NodeJS Service")
     try:
@@ -149,13 +197,16 @@ def writeRepoCompose(project, repo):
         data = {
             "domains": repo['domains'],
             "mainDomain": mainDomain,
-            "name": repo['name']
+            "name": repo['name'],
+            "rType": rType
         }
         nginxSites.append(data)
         repo['mainDomain'] = mainDomain
 
     if "nodejs" in rType:
         writeNodeJSService(project, repo)
+    elif "java" in rType:
+        writeJavaService(project, repo)
 
 
 def startDCompose():
@@ -181,6 +232,7 @@ def createNginxConfs():
             domains = nginxSite['domains']
             name = nginxSite['name']
             mainDomain = nginxSite['mainDomain']
+            rType = nginxSite['rType']
 
             if proxyStrategy == "inner":
                 mainDomain += '.inner'
@@ -188,7 +240,7 @@ def createNginxConfs():
                 # Assumes standard
                 pass
 
-            src = NGINX_PATH + "vhost.template.nodejs"
+            src = NGINX_PATH + "vhost.{}.template".format(rType)
             dst = NGINX_CONF + name + ".conf"
             copyfile(src, dst)
 
@@ -301,7 +353,7 @@ def writeDBCompose(project, dbs):
                 with open(COMPOSE_YML, 'a') as file:
                     file.write( os.linesep + json2yaml(dataToWrite, 1) )
         except Exception, e:
-            print "Write Network Compose Error:", e
+            print "Write dbs into docker-compose.yml Error:", e
             sys.exit(1)
     
     print "DONE!\n\n"

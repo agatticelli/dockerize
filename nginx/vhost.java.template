@@ -1,0 +1,18 @@
+server {
+    listen 80;
+    index index.html;
+    server_name {{ domains }};
+    root /usr/src/app;
+
+    error_log  /var/log/nginx/{{ domain }}-error.log;
+    access_log /var/log/nginx/{{ domain }}-access.log;
+
+    location / {
+        resolver 127.0.0.11 ipv6=off;
+        set $backend "http://{{ domain }}:8080";
+        proxy_pass $backend;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header Host $http_host;
+    }
+}

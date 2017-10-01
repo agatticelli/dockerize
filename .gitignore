@@ -1,3 +1,4 @@
+.DS_Store
 dockerson.json
 nginx/conf.d
 /plugins
