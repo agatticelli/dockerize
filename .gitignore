@@ -4,7 +4,6 @@ dockerson.json
 docker-compose.yml
 
 /nginx/conf.d
-entrypoint
 /plugins
 
 !.gitkeep
