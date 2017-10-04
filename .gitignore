@@ -4,6 +4,6 @@ dockerson.json
 docker-compose.yml
 
 /nginx/conf.d
-entrypoint
+/mysql/docker-entrypoint-initdb.d
 
 !.gitkeep
