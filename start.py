@@ -302,7 +302,7 @@ def createNginxConfs():
                 # Assumes standard
                 pass
 
-            src = NGINX_PATH + "vhost.{}.template".format(rType)
+            src = NGINX_PATH + "vhost.{}.template".format(rType.split("|")[0])
             dst = NGINX_CONF + name + ".conf"
             copyfile(src, dst)
 
