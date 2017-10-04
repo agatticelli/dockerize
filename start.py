@@ -98,6 +98,57 @@ def json2yaml(json, level=0):
     return to_print
 
 
+def parseDomains(repo):
+    if "domains" in repo:
+        domain = repo['mainDomain']
+    else:
+        domain = repo['name'] + '.app'
+
+    if proxyStrategy == "inner":
+        domain += ".inner"
+    else:
+        # Assumes standard
+        pass
+
+    return domain
+
+
+def writeLaravelService(project, repo, version):
+    try:
+        file = open(COMPOSE_YML, 'a')
+        repoName = repo['name']
+        repoPath = repo['path']
+        aliases = []
+
+        aliases.append(parseDomains(repo))
+
+        dataToWrite = {
+            repoName: {
+                "build": "./laravel/7.0/" if version == 5 else "./laravel/5.6/",
+                "working_dir": "/var/www/" + repoName,
+                "volumes": [
+                    repoPath + ":/var/www/" + repoName
+                ],
+                "networks": {
+                    project: {
+                        "aliases": aliases
+                    }
+                }
+            }
+        }
+
+        if "hostname" in repo:
+            dataToWrite[repoName]["hostname"] = repo["hostname"]
+
+        file.write(os.linesep + os.linesep + json2yaml(dataToWrite, 1))
+    except Exception, e:
+        print "Write Laravel Service Error ("+ project +"):", e
+        sys.exit(1)
+    finally:
+        if file:
+            file.close()
+
+
 def writeJavaService(project, repo):
     printMessage("Writing Java Service")
     try:
@@ -106,18 +157,7 @@ def writeJavaService(project, repo):
         repoPath = repo['path']
         aliases = []
 
-        if "domains" in repo:
-            domain = repo['mainDomain']
-        else:
-            domain = repoName + '.app'
-
-        if proxyStrategy == "inner":
-            domain += ".inner"
-        else:
-            # Assumes standard
-            pass
-
-        aliases.append(domain)
+        aliases.append(parseDomains(repo))
 
         dataToWrite = {
             repoName: {
@@ -136,7 +176,7 @@ def writeJavaService(project, repo):
         if "hostname" in repo:
             dataToWrite[repoName]["hostname"] = repo["hostname"]
 
-        file.write( os.linesep * 2 + json2yaml(dataToWrite, 1) )
+        file.write(os.linesep * 2 + json2yaml(dataToWrite, 1))
         print "DONE!\n\n"
     except Exception, e:
         print "Write Java Service Error ("+ project +"):", e
@@ -154,18 +194,7 @@ def writeNodeJSService(project, repo):
         repoPath = repo['path']
         aliases = []
 
-        if "domains" in repo:
-            domain = repo['mainDomain']
-        else:
-            domain = repoName + '.app'
-
-        if proxyStrategy == "inner":
-            domain += ".inner"
-        else:
-            # Assumes standard
-            pass
-        
-        aliases.append(domain)
+        aliases.append(parseDomains(repo))
 
         dataToWrite = {
             repoName: {
@@ -216,6 +245,11 @@ def writeRepoCompose(project, repo):
         writeNodeJSService(project, repo)
     elif "java" in rType:
         writeJavaService(project, repo)
+    elif "laravel" in rType:
+        if "4.x" in rType:
+            writeLaravelService(project, repo, 4)
+        else:
+            writeLaravelService(project, repo, 5)
 
 
 def startDCompose():
@@ -229,6 +263,25 @@ def cleanOldNginxConfs():
     map(os.unlink, glob.glob(NGINX_CONF + '*.conf'))
 
     print "DONE!\n\n"
+
+
+def processPlugins(project, repo):
+    printMessage('Running plugins for ' + repo['name'])
+    if "plugins" in repo:
+        plugins = repo['plugins']
+        path = repo['path']
+        name = repo['name']
+        rType = repo['type']
+        for plugin in plugins:
+            if plugin == "laravel":
+                laravelPlugin = './plugins/laravel.sh %s %s %s %s'
+                version = rType.split("|")[1]
+                os.system(laravelPlugin % (path, project, name, version))
+            elif plugin == "composer":
+                composerPlugin = './plugins/composer.sh %s'
+                os.system(composerPlugin % (path))
+
+    print '\nDONE!\n\n'
 
 
 def createNginxConfs():
@@ -417,3 +470,6 @@ if __name__ == "__main__":
     writeEtcHosts(project)
 
     startContainers(project)
+
+    for repo in repos:
+        processPlugins(project, repo)
