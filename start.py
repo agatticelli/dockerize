@@ -309,6 +309,7 @@ def createNginxConfs():
             sed_vhost = "sed -i.bak 's/{{ %s }}/%s/g' %s"
             os.system(sed_vhost % ("domains", domains, dst))
             os.system(sed_vhost % ("domain", mainDomain, dst))
+            os.system(sed_vhost % ("repo", name, dst))
 
             map(os.unlink, glob.glob(NGINX_CONF + '*.bak'))
 
