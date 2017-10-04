@@ -1,0 +1,11 @@
+export YELLOW='\033[0;33m'
+export PURPLE='\033[0;35m'
+export CYAN='\033[0;36m'
+export WHITE='\033[0;37m'
+export RED='\033[0;31m'
+export LIGHTRED="\033[1;31m"
+export GREEN="\033[0;32m"
+export BLACK='\033[0;30m'
+export BLUE='\033[0;34m'
+export NONE='\033[0m' # Text Reset
+export LIGHTGRAY="\033[37m"
