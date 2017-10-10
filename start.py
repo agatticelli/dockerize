@@ -113,14 +113,18 @@ def parseDomains(repo):
     return domain
 
 
+def parsePorts(repo):
+    return repo['ports'] if 'ports' in repo else []
+
+
 def writeLaravelService(project, repo, version):
     try:
         file = open(COMPOSE_YML, 'a')
         repoName = repo['name']
         repoPath = repo['path']
-        aliases = []
 
-        aliases.append(parseDomains(repo))
+        aliases = [parseDomains(repo)]
+        ports = parsePorts(repo)
 
         dataToWrite = {
             repoName: {
@@ -140,6 +144,9 @@ def writeLaravelService(project, repo, version):
         if "hostname" in repo:
             dataToWrite[repoName]["hostname"] = repo["hostname"]
 
+        if len(ports):
+            dataToWrite[repoName]["ports"] = ports
+
         file.write(os.linesep + os.linesep + json2yaml(dataToWrite, 1))
     except Exception, e:
         print "Write Laravel Service Error ("+ project +"):", e
@@ -155,9 +162,9 @@ def writeJavaService(project, repo):
         file = open(COMPOSE_YML, 'a')
         repoName = repo['name']
         repoPath = repo['path']
-        aliases = []
-
-        aliases.append(parseDomains(repo))
+        
+        aliases = [parseDomains(repo)]
+        ports = parsePorts(repo)
 
         dataToWrite = {
             repoName: {
@@ -173,8 +180,12 @@ def writeJavaService(project, repo):
                 }
             }
         }
+
         if "hostname" in repo:
             dataToWrite[repoName]["hostname"] = repo["hostname"]
+
+        if len(ports):
+            dataToWrite[repoName]["ports"] = ports
 
         file.write(os.linesep * 2 + json2yaml(dataToWrite, 1))
         print "DONE!\n\n"
@@ -192,9 +203,9 @@ def writeNodeJSService(project, repo):
         file = open(COMPOSE_YML, 'a')
         repoName = repo['name']
         repoPath = repo['path']
-        aliases = []
 
-        aliases.append(parseDomains(repo))
+        aliases = [parseDomains(repo)]
+        ports = parsePorts(repo)
 
         dataToWrite = {
             repoName: {
@@ -214,8 +225,12 @@ def writeNodeJSService(project, repo):
                 }
             }
         }
+
         if "hostname" in repo:
             dataToWrite[repoName]["hostname"] = repo["hostname"]
+
+        if len(ports):
+            dataToWrite[repoName]["ports"] = ports
 
         file.write( os.linesep * 2 + json2yaml(dataToWrite, 1) )
         print "DONE!\n\n"
