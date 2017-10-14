@@ -2,10 +2,13 @@
 
 import glob
 import json
+import optparse
 import os
 from shutil import copyfile
 import sys
 from subprocess import Popen, PIPE, check_output
+from time import sleep
+import webbrowser
 
 nginxSites = []
 proxyStrategy = "standard"
@@ -31,6 +34,13 @@ DB_DATA_PATH = {
     "mongo": "/data/db"
 }
 DB_VOLUME = "~/.dockerize/data/{}"
+
+
+parser = optparse.OptionParser()
+parser.add_option('-o', '--open', dest='open', help='Url to open at start')
+
+(options, args) = parser.parse_args()
+print(options, args)
 
 def printMessage(msg):
     msgLen = len(msg) + 10
@@ -489,3 +499,24 @@ if __name__ == "__main__":
 
     for repo in repos:
         processPlugins(project, repo)
+
+    if options.open:
+        open_ = options.open
+        opened = False
+        try:
+            for repo in repos:
+                if repo['name'] == open_:
+                    if "mainDomain" in repo:
+                        print("Opening web browser...")
+                        sleep(5)
+                        webbrowser.open("http://" + repo['mainDomain'])
+                        opened = True
+                        break
+                    else:
+                        msg = "OPEN: No domains for repo {}"
+                        raise Exception(msg.format(open_))
+            if not opened:
+                msg = "OPEN: {} not found in repos list"
+                raise Exception(msg.format(open_))
+        except Exception as e:
+            print(e)
