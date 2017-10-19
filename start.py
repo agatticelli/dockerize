@@ -33,7 +33,7 @@ DB_DATA_PATH = {
     "redis": "/data",
     "mongo": "/data/db"
 }
-DB_VOLUME = "~/.dockerize/data/{}"
+DB_VOLUME = "~/.dockerize/data/{}/{}"
 
 
 parser = optparse.OptionParser()
@@ -423,7 +423,7 @@ def writeDBCompose(project, dbs):
     if len(dbs):
         try:
             for db in dbs:
-                volume = DB_VOLUME.format(db)
+                volume = DB_VOLUME.format(db, project)
                 dataToWrite = {
                     db: {
                         "build": "./" + db + "/",
