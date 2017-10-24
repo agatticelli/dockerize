@@ -72,7 +72,7 @@ def parseDockerson():
 
     try:
         if options.dockerson:
-            dockersonFile = options.dockerson
+            dockersonFile = options.dockerson + '.dockerson.json'
             if not os.path.isfile(dockersonFile):
                 raise Exception('El archivo %s no existe' % dockersonFile)
         else:
