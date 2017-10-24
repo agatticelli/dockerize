@@ -38,9 +38,10 @@ DB_VOLUME = "~/.dockerize/data/{}/{}"
 
 parser = optparse.OptionParser()
 parser.add_option('-o', '--open', dest='open', help='Url to open at start')
+parser.add_option('-d', '--dockerson', dest='dockerson',
+                  help='Dockerson file to load')
 
 (options, args) = parser.parse_args()
-print(options, args)
 
 def printMessage(msg):
     msgLen = len(msg) + 10
@@ -70,8 +71,16 @@ def parseDockerson():
     data = None
 
     try:
-        with open('dockerson.json') as dockerfile:
-            data = json.load( dockerfile )
+        if options.dockerson:
+            dockersonFile = options.dockerson
+            if not os.path.isfile(dockersonFile):
+                raise Exception('El archivo %s no existe' % dockersonFile)
+        else:
+            dockersonFile = 'dockerson.json'
+
+        with open(dockersonFile) as dockerfile:
+            data = json.load(dockerfile)
+
     except Exception, e:
         print "Dockerson File Error:", e
         sys.exit(1)
@@ -172,7 +181,7 @@ def writeJavaService(project, repo):
         file = open(COMPOSE_YML, 'a')
         repoName = repo['name']
         repoPath = repo['path']
-        
+
         aliases = [parseDomains(repo)]
         ports = parsePorts(repo)
 
@@ -447,7 +456,7 @@ def writeDBCompose(project, dbs):
         except Exception, e:
             print "Write dbs into docker-compose.yml Error:", e
             sys.exit(1)
-    
+
     print "DONE!\n\n"
 
 
@@ -476,9 +485,9 @@ if __name__ == "__main__":
     for repo in repos:
         repo['path'] = check_output(['echo {}'.format(repo['into'])],
                                     shell=True).strip()
-        
+
         clone(repo['clone'], repo['path'])
-        
+
         writeRepoCompose(project, repo)
 
     cleanOldNginxConfs()

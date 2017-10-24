@@ -1,6 +1,6 @@
 .DS_Store
 
-dockerson.json
+*.dockerson.json
 docker-compose.yml
 
 /nginx/conf.d
