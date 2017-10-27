@@ -11,8 +11,8 @@ current=$(pwd)
 cd $path
 
 if [ "$version" == "5.x" ]; then
-	echo -e "${LIGHTRED}-------> Copying .env file ...${NONE} ${YELLOW}EDIT LATER!${NONE}"
 	if [ ! -f ".env" ]; then
+	    echo -e "${LIGHTRED}-------> Copying .env file ...${NONE} ${YELLOW}EDIT LATER!${NONE}"
 	    cp ".env.example" ".env"
 	fi
 else # is 4.2
