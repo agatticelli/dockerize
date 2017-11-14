@@ -4,6 +4,7 @@ import glob
 import json
 import optparse
 import os
+import re
 from shutil import copyfile
 import sys
 from subprocess import Popen, PIPE, check_output
@@ -35,6 +36,8 @@ DB_DATA_PATH = {
 }
 DB_VOLUME = "~/.dockerize/data/{}/{}"
 
+PHPV_REGEX = r"^php\|(5|7)[.\d+]*$"
+
 
 parser = optparse.OptionParser()
 parser.add_option('-o', '--open', dest='open', help='Url to open at start')
@@ -45,9 +48,9 @@ parser.add_option('-d', '--dockerson', dest='dockerson',
 
 def printMessage(msg):
     msgLen = len(msg) + 10
-    print "-" * msgLen
+    print "\033[1;31m-" * msgLen
     print "|    " + msg + "    |"
-    print "-" * msgLen + "\n"
+    print "-" * msgLen + "\n\033[0m"
 
 def clone(src, dst):
     printMessage("Clonning repo: " + src)
@@ -136,7 +139,8 @@ def parsePorts(repo):
     return repo['ports'] if 'ports' in repo else []
 
 
-def writeLaravelService(project, repo, version):
+def writeService(project, repo, rType, extra):
+    printMessage("Writing %s Service" % rType)
     try:
         file = open(COMPOSE_YML, 'a')
         repoName = repo['name']
@@ -145,51 +149,17 @@ def writeLaravelService(project, repo, version):
         aliases = [parseDomains(repo)]
         ports = parsePorts(repo)
 
-        dataToWrite = {
-            repoName: {
-                "build": "./laravel/7.0/" if version == 5 else "./laravel/5.6/",
-                "working_dir": "/var/www/" + repoName,
-                "volumes": [
-                    repoPath + ":/var/www/" + repoName
-                ],
-                "networks": {
-                    project: {
-                        "aliases": aliases
-                    }
-                }
-            }
-        }
-
-        if "hostname" in repo:
-            dataToWrite[repoName]["hostname"] = repo["hostname"]
-
-        if len(ports):
-            dataToWrite[repoName]["ports"] = ports
-
-        file.write(os.linesep + os.linesep + json2yaml(dataToWrite, 1))
-    except Exception, e:
-        print "Write Laravel Service Error ("+ project +"):", e
-        sys.exit(1)
-    finally:
-        if file:
-            file.close()
-
-
-def writeJavaService(project, repo):
-    printMessage("Writing Java Service")
-    try:
-        file = open(COMPOSE_YML, 'a')
-        repoName = repo['name']
-        repoPath = repo['path']
-
-        aliases = [parseDomains(repo)]
-        ports = parsePorts(repo)
+        repoDockerfile = '/'.join([repoPath, 'Dockerfile'])
+        if os.path.isfile(repoDockerfile):
+            dockerfile = repoDockerfile
+        else:
+            dockerfile = '/'.join([SCRIPT_PATH, rType, 'Dockerfile'])
 
         dataToWrite = {
             repoName: {
                 "build": {
                     "context": repoPath,
-                    "dockerfile": SCRIPT_PATH + "/java/Dockerfile"
+                    "dockerfile": dockerfile
                 },
                 "working_dir": "/usr/src/app/",
                 "networks": {
@@ -203,62 +173,58 @@ def writeJavaService(project, repo):
         if "hostname" in repo:
             dataToWrite[repoName]["hostname"] = repo["hostname"]
 
+        if "dns" in repo:
+            dataToWrite[repoName]['dns'] = repo['dns']
+
         if len(ports):
             dataToWrite[repoName]["ports"] = ports
+
+        if extra:
+            for key in extra:
+                dataToWrite[repoName][key] = extra[key]
 
         file.write(os.linesep * 2 + json2yaml(dataToWrite, 1))
         print "DONE!\n\n"
     except Exception, e:
-        print "Write Java Service Error ("+ project +"):", e
-        sys.exit(1)
+        print "Write %s Service Error (%s): %s" % (rType, project, e)
+        raise e
     finally:
         if file:
             file.close()
+
+def writePHPService(project, repo, version):
+    try:
+        pathInDocker = "/usr/src/app/" + repo['name']
+        extra = {
+            "volumes": [
+                VOLUME_STR.format(repo['path'], pathInDocker)
+            ],
+            "working_dir": pathInDocker,
+            "build": "./php/7.0/" if version == 7 else "./php/5.6/"
+        }
+        writeService(project, repo, 'PHP:'+str(version), extra)
+    except Exception, e:
+        sys.exit(1)
+
+
+def writeJavaService(project, repo):
+    try:
+        writeService(project, repo, 'Java', None)
+    except Exception, e:
+        sys.exit(1)
 
 
 def writeNodeJSService(project, repo):
-    printMessage("Writing NodeJS Service")
     try:
-        file = open(COMPOSE_YML, 'a')
-        repoName = repo['name']
-        repoPath = repo['path']
-
-        aliases = [parseDomains(repo)]
-        ports = parsePorts(repo)
-
-        dataToWrite = {
-            repoName: {
-                "build": {
-                    "context": repoPath,
-                    "dockerfile": SCRIPT_PATH + "/nodejs/Dockerfile"
-                },
-                "working_dir": "/usr/src/app/",
-                "volumes": [
-                    VOLUME_STR.format(repoPath, "/usr/src/app"),
-                    '/usr/src/app/node_modules'
-                ],
-                "networks": {
-                    project: {
-                        "aliases": aliases
-                    }
-                }
-            }
+        extra = {
+            "volumes": [
+                VOLUME_STR.format(repo['path'], "/usr/src/app"),
+                '/usr/src/app/node_modules'
+            ]
         }
-
-        if "hostname" in repo:
-            dataToWrite[repoName]["hostname"] = repo["hostname"]
-
-        if len(ports):
-            dataToWrite[repoName]["ports"] = ports
-
-        file.write( os.linesep * 2 + json2yaml(dataToWrite, 1) )
-        print "DONE!\n\n"
+        writeService(project, repo, 'NodeJS', extra)
     except Exception, e:
-        print "Write NodeJS Service Error ("+ project +"):", e
         sys.exit(1)
-    finally:
-        if file:
-            file.close()
 
 
 def writeRepoCompose(project, repo):
@@ -279,11 +245,14 @@ def writeRepoCompose(project, repo):
         writeNodeJSService(project, repo)
     elif "java" in rType:
         writeJavaService(project, repo)
-    elif "laravel" in rType:
-        if "4.x" in rType:
-            writeLaravelService(project, repo, 4)
+    elif "php" in rType:
+        matches = re.search(PHPV_REGEX, rType)
+        if matches:
+            version = int(matches.groups()[0])
+            writePHPService(project, repo, version)
         else:
-            writeLaravelService(project, repo, 5)
+            print "ERROR: php bad version", rType
+            sys.exit(1)
 
 
 def startDCompose():
@@ -307,9 +276,9 @@ def processPlugins(project, repo):
         name = repo['name']
         rType = repo['type']
         for plugin in plugins:
-            if plugin == "laravel":
+            if "laravel" in plugin:
                 laravelPlugin = './plugins/laravel.sh %s %s %s %s'
-                version = rType.split("|")[1]
+                version = plugin.split("|")[1]
                 os.system(laravelPlugin % (path, project, name, version))
             elif plugin == "composer":
                 composerPlugin = './plugins/composer.sh %s'
@@ -416,14 +385,16 @@ def writeEtcHosts(project):
         for nginxSite in nginxSites:
             sites += nginxSite['domains'] + " "
 
-        sed = "sudo sed -i.bak '/%s/d' /etc/hosts > /dev/null"
-        tee = "echo '%s' | sudo tee -a /etc/hosts > /dev/null"
-
-        oldLine = ".*"+project+"-docker.*"
         newLine = "127.0.0.1 " + sites + "#" + project + "-docker"
+        grep = 'grep "' + newLine + '" /etc/hosts > /dev/null'
 
-        os.system( sed % (oldLine) )
-        os.system( tee % (newLine) )
+        if os.system(grep):
+            sed = "sudo sed -i.bak '/%s/d' /etc/hosts > /dev/null"
+            tee = "echo '%s' | sudo tee -a /etc/hosts > /dev/null"
+            oldLine = ".*"+project+"-docker.*"
+            os.system( sed % (oldLine) )
+            os.system( tee % (newLine) )
+
     print "DONE!\n\n"
 
 

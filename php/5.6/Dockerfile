@@ -2,7 +2,7 @@ FROM php:5.6-fpm
 
 RUN apt-get update
 
-RUN apt-get install -y python php5-cli php5-mysql \
+RUN apt-get install -y python php5-cli php5-mysql php5-mcrypt \
     php5-redis php5-readline libmcrypt-dev libcurl4-gnutls-dev zlib1g-dev \
     libicu-dev g++ libxml2-dev libpq-dev git zip unzip
 

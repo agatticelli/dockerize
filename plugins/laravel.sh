@@ -5,12 +5,14 @@ source ./plugins/colors.sh
 path=$1
 project=$2
 repo=$3
-version=$4
+version="$4"
 current=$(pwd)
 
 cd $path
 
-if [ "$version" == "5.x" ]; then
+version_regex="^5(\.[0-9])?$"
+
+if [[ "$version" =~ $version_regex ]]; then
 	if [ ! -f ".env" ]; then
 	    echo -e "${LIGHTRED}-------> Copying .env file ...${NONE} ${YELLOW}EDIT LATER!${NONE}"
 	    cp ".env.example" ".env"
@@ -36,7 +38,7 @@ cd $current
 
 $(dirname $0)/composer.sh $path
 
-if [ "$version" == "5.x" ]; then
+if [[ "$version" =~ $version_regex ]]; then
 	sudo chmod -R 777 $path/storage
 	sudo chmod -R 777 $path/bootstrap/cache
 else

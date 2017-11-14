@@ -2,7 +2,7 @@ server {
     listen 80;
     index index.php index.html;
     server_name {{ domains }};
-    root /var/www/{{ repo }}/public;
+    root /usr/src/app/{{ repo }}/public;
 
     location / {
          try_files $uri $uri/ /index.php$is_args$args;

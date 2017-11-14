@@ -1,6 +1,6 @@
 FROM node:latest
 
-RUN npm install -g nodemon
+RUN npm install -g nodemon forever
 
 ADD package.json /tmp/package.json
 RUN cd /tmp && npm install
