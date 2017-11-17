@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
+from argparse import ArgumentParser
 import glob
 import json
-import optparse
 import os
 import re
 from shutil import copyfile
@@ -14,7 +14,7 @@ import webbrowser
 nginxSites = []
 proxyStrategy = "standard"
 
-DOCKER_UP = "docker-compose -p {} up -d --build"
+DOCKER_UP = "docker-compose -p {} up -d{}"
 SCRIPT_PATH = os.path.abspath(os.path.dirname(sys.argv[0]))
 
 COMPOSE_YML = SCRIPT_PATH + '/docker-compose.yml'
@@ -39,12 +39,14 @@ DB_VOLUME = "~/.dockerize/data/{}/{}"
 PHPV_REGEX = r"^php\|(5|7)[.\d+]*$"
 
 
-parser = optparse.OptionParser()
-parser.add_option('-o', '--open', dest='open', help='Url to open at start')
-parser.add_option('-d', '--dockerson', dest='dockerson',
-                  help='Dockerson file to load')
+parser = ArgumentParser()
+parser.add_argument('-o', '--open', dest='open', help='Url to open at start')
+parser.add_argument('-b', '--build', action='store_true',
+                    dest='build', help='Rebuild containers')
+parser.add_argument('-d', '--dockerson', dest='dockerson',
+                    help='Dockerson file to load')
 
-(options, args) = parser.parse_args()
+args = parser.parse_args()
 
 def printMessage(msg):
     msgLen = len(msg) + 10
@@ -74,8 +76,8 @@ def parseDockerson():
     data = None
 
     try:
-        if options.dockerson:
-            dockersonFile = options.dockerson + '.dockerson.json'
+        if args.dockerson:
+            dockersonFile = args.dockerson + '.dockerson.json'
             if not os.path.isfile(dockersonFile):
                 raise Exception('El archivo %s no existe' % dockersonFile)
         else:
@@ -192,6 +194,17 @@ def writeService(project, repo, rType, extra):
         if file:
             file.close()
 
+def writePythonService(project, repo):
+    try:
+        extra = {
+            "volumes": [
+                VOLUME_STR.format(repo['path'], "/usr/src/app"),
+            ]
+        }
+        writeService(project, repo, 'Python', extra)
+    except Exception, e:
+      sys.exit(1)
+
 def writePHPService(project, repo, version):
     try:
         pathInDocker = "/usr/src/app/" + repo['name']
@@ -253,6 +266,8 @@ def writeRepoCompose(project, repo):
         else:
             print "ERROR: php bad version", rType
             sys.exit(1)
+    elif "python" in rType:
+        writePythonService(project, repo)
 
 
 def startDCompose():
@@ -446,7 +461,10 @@ def writeCustoms(project, custom):
 
 def startContainers(project):
     printMessage('Starting containers')
-    os.system(DOCKER_UP.format(project))
+    opts = ""
+    if args.build:
+        opts += " --build"
+    os.system(DOCKER_UP.format(project, opts))
     print "\nDONE!\n\n"
 
 if __name__ == "__main__":
@@ -480,8 +498,8 @@ if __name__ == "__main__":
     for repo in repos:
         processPlugins(project, repo)
 
-    if options.open:
-        open_ = options.open
+    if args.open:
+        open_ = args.open
         opened = False
         try:
             for repo in repos:
