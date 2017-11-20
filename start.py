@@ -41,7 +41,7 @@ PHPV_REGEX = r"^php\|(5|7)[.\d+]*$"
 
 parser = ArgumentParser()
 parser.add_argument('-o', '--open', dest='open', help='Url to open at start')
-parser.add_argument('-b', '--build', action='store_true',
+parser.add_argument('-b', '--build', nargs="*",
                     dest='build', help='Rebuild containers')
 parser.add_argument('-d', '--dockerson', dest='dockerson',
                     help='Dockerson file to load')
@@ -462,8 +462,8 @@ def writeCustoms(project, custom):
 def startContainers(project):
     printMessage('Starting containers')
     opts = ""
-    if args.build:
-        opts += " --build"
+    if args.build is not None:
+        opts += " --build {}".format(" ".join(args.build))
     os.system(DOCKER_UP.format(project, opts))
     print "\nDONE!\n\n"
 
