@@ -235,7 +235,7 @@ def writeNodeJSService(project, repo):
                 '/usr/src/app/node_modules'
             ]
         }
-        writeService(project, repo, 'NodeJS', extra)
+        writeService(project, repo, 'nodejs', extra)
     except Exception, e:
         sys.exit(1)
 
