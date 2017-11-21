@@ -155,7 +155,7 @@ def writeService(project, repo, rType, extra):
         if os.path.isfile(repoDockerfile):
             dockerfile = repoDockerfile
         else:
-            dockerfile = '/'.join([SCRIPT_PATH, rType, 'Dockerfile'])
+            dockerfile = '/'.join([SCRIPT_PATH, rType.lower(), 'Dockerfile'])
 
         dataToWrite = {
             repoName: {
