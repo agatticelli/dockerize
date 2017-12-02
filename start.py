@@ -36,7 +36,7 @@ DB_DATA_PATH = {
 }
 DB_VOLUME = "~/.dockerize/data/{}/{}"
 
-PHPV_REGEX = r"^php\|(5|7)[.\d+]*$"
+PHPV_REGEX = r"^php\|(\d\.?\d*)$"
 
 
 parser = ArgumentParser()
@@ -212,10 +212,9 @@ def writePHPService(project, repo, version):
             "volumes": [
                 VOLUME_STR.format(repo['path'], pathInDocker)
             ],
-            "working_dir": pathInDocker,
-            "build": "./php/7.0/" if version == 7 else "./php/5.6/"
+            "working_dir": pathInDocker
         }
-        writeService(project, repo, 'PHP:'+str(version), extra)
+        writeService(project, repo, 'php/'+str(version), extra)
     except Exception, e:
         sys.exit(1)
 
@@ -261,7 +260,7 @@ def writeRepoCompose(project, repo):
     elif "php" in rType:
         matches = re.search(PHPV_REGEX, rType)
         if matches:
-            version = int(matches.groups()[0])
+            version = matches.groups()[0]
             writePHPService(project, repo, version)
         else:
             print "ERROR: php bad version", rType
