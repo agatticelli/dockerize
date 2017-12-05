@@ -8,6 +8,7 @@ WORKDIR /usr/src/app
 
 # Prepare by downloading dependencies
 ADD pom.xml /usr/src/app/pom.xml
+RUN mvn verify clean --fail-never
 
 # Adding source, compile and package into a fat jar
 ADD src /usr/src/app/src

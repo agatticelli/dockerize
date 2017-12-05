@@ -38,7 +38,6 @@ DB_VOLUME = "~/.dockerize/data/{}/{}"
 
 PHPV_REGEX = r"^php\|(\d\.?\d*)$"
 
-
 parser = ArgumentParser()
 parser.add_argument('-o', '--open', dest='open', help='Url to open at start')
 parser.add_argument('-b', '--build', nargs="*",
@@ -180,6 +179,9 @@ def writeService(project, repo, rType, extra):
 
         if len(ports):
             dataToWrite[repoName]["ports"] = ports
+
+        if "depends_on" in repo:
+            dataToWrite[repoName]["depends_on"] = repo["depends_on"]
 
         if extra:
             for key in extra:
