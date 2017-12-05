@@ -34,7 +34,7 @@ DB_DATA_PATH = {
     "redis": "/data",
     "mongo": "/data/db"
 }
-DB_VOLUME = "~/.dockerize/data/{}/{}"
+DB_VOLUME = "/var/lib/dockerize/data/{}/{}"
 
 PHPV_REGEX = r"^php\|(\d\.?\d*)$"
 
