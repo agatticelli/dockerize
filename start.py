@@ -11,6 +11,8 @@ from subprocess import Popen, PIPE, check_output
 from time import sleep
 import webbrowser
 
+volumes = []
+
 nginxSites = []
 proxyStrategy = "standard"
 
@@ -34,7 +36,7 @@ DB_DATA_PATH = {
     "redis": "/data",
     "mongo": "/data/db"
 }
-DB_VOLUME = "/var/lib/dockerize/data/{}/{}"
+DB_VOLUME = "{}_databases_{}"
 
 PHPV_REGEX = r"^php\|(\d\.?\d*)$"
 
@@ -140,6 +142,10 @@ def parsePorts(repo):
     return repo['ports'] if 'ports' in repo else []
 
 
+def getRealPath(path):
+    return check_output(['echo {}'.format(path)], shell=True).strip()
+
+
 def writeService(project, repo, rType, extra):
     printMessage("Writing %s Service" % rType)
     try:
@@ -150,11 +156,15 @@ def writeService(project, repo, rType, extra):
         aliases = [parseDomains(repo)]
         ports = parsePorts(repo)
 
-        repoDockerfile = '/'.join([repoPath, 'Dockerfile'])
-        if os.path.isfile(repoDockerfile):
-            dockerfile = repoDockerfile
+        if "dockerfile" in repo:
+            dockerfile = repo['dockerfile']
         else:
-            dockerfile = '/'.join([SCRIPT_PATH, rType.lower(), 'Dockerfile'])
+            repoDockerfile = '/'.join([repoPath, 'Dockerfile'])
+            if os.path.isfile(repoDockerfile):
+                dockerfile = repoDockerfile
+            else:
+                arrPath = [SCRIPT_PATH, rType.lower(), 'Dockerfile']
+                dockerfile = '/'.join(arrPath)
 
         dataToWrite = {
             repoName: {
@@ -394,6 +404,25 @@ def writeNetworkCompose(project):
         sys.exit(1)
 
 
+def writeVolumeCompose():
+    printMessage('Writing volumes into docker-compose.yml')
+    try:
+        dataToWrite = {
+            "volumes": {}
+        }
+        for volume in volumes:
+            dataToWrite['volumes'][volume] = {
+                "external": "true"
+            }
+
+        with open(COMPOSE_YML, 'a') as file:
+            file.write( os.linesep + json2yaml(dataToWrite) )
+        print "DONE!\n\n"
+    except Exception, e:
+        print "Write Volume Compose:", e
+        sys.exit(1)
+
+
 def writeEtcHosts(project):
     printMessage('Overriding /etc/hosts')
     if len(nginxSites):
@@ -414,27 +443,62 @@ def writeEtcHosts(project):
     print "DONE!\n\n"
 
 
+def DB_volumeExistsFor(vol):
+    return not os.system("docker volume inspect {} >/dev/null 2>&1".format(vol))
+
+
+def DB_createVolumeFor(vol):
+    printMessage('Creating volume {}'.format(vol))
+    failed = os.system("docker volume create {} >/dev/null 2>&1".format(vol))
+    if failed:
+        print "Failed creating volume " + vol
+        sys.exit(1)
+
+    print "DONE!\n\n"
+
+
 def writeDBCompose(project, dbs):
+    global volumes
     printMessage('Writing dbs into docker-compose.yml')
     if len(dbs):
         try:
             for db in dbs:
-                volume = DB_VOLUME.format(db, project)
+                engine = db['engine']
+                volume = DB_VOLUME.format(project, engine)
+
+                if not DB_volumeExistsFor(volume):
+                    DB_createVolumeFor(volume)
+                volumes.append(volume)
+
+                if "dockerfile" in db:
+                    buildPath = getRealPath(db['dockerfile'])
+                    if "context" in db:
+                        context = getRealPath(db["context"])
+                    else:
+                        context = "."
+                else:
+                    buildPath = "./{}/Dockerfile".format(engine)
+                    context = "."
+
+
                 dataToWrite = {
-                    db: {
-                        "build": "./" + db + "/",
+                    engine: {
+                        "build": {
+                            "context": context,
+                            "dockerfile": buildPath
+                        },
                         "networks": {
                             project: {
                                 "aliases": [
-                                    db + ".db"
+                                    engine + ".db"
                                 ]
                             }
                         },
                         "volumes": [
-                            VOLUME_STR.format(volume, DB_DATA_PATH[db])
+                            VOLUME_STR.format(volume, DB_DATA_PATH[engine])
                         ],
                         "ports": [
-                            DB_PORTS[db]+":"+DB_PORTS[db]
+                            DB_PORTS[engine]+":"+DB_PORTS[engine]
                         ]
                     }
                 }
@@ -473,8 +537,7 @@ if __name__ == "__main__":
 
     startDCompose()
     for repo in repos:
-        repo['path'] = check_output(['echo {}'.format(repo['into'])],
-                                    shell=True).strip()
+        repo['path'] = getRealPath(repo['into'])
 
         clone(repo['clone'], repo['path'])
 
@@ -486,11 +549,13 @@ if __name__ == "__main__":
 
     writeNginxCompose(project)
 
-    writeDBCompose(project, dbs)
-
     writeCustoms(project, custom)
 
+    writeDBCompose(project, dbs)
+
     writeNetworkCompose(project)
+
+    writeVolumeCompose()
 
     writeEtcHosts(project)
 
