@@ -190,7 +190,9 @@ def writeService(project, repo, rType, extra):
         if len(ports):
             dataToWrite[repoName]["ports"] = ports
 
+        depends_on = []
         if "depends_on" in repo:
+
             dataToWrite[repoName]["depends_on"] = repo["depends_on"]
 
         if extra:
@@ -480,6 +482,7 @@ def writeDBCompose(project, dbs):
                     buildPath = "./{}/Dockerfile".format(engine)
                     context = "."
 
+                sourcePort = str(db['port']) if 'port' in db else DB_PORTS[engine]
 
                 dataToWrite = {
                     engine: {
@@ -498,7 +501,7 @@ def writeDBCompose(project, dbs):
                             VOLUME_STR.format(volume, DB_DATA_PATH[engine])
                         ],
                         "ports": [
-                            DB_PORTS[engine]+":"+DB_PORTS[engine]
+                            sourcePort+":"+DB_PORTS[engine]
                         ]
                     }
                 }
@@ -540,6 +543,14 @@ if __name__ == "__main__":
         repo['path'] = getRealPath(repo['into'])
 
         clone(repo['clone'], repo['path'])
+
+        db_depends_on = map(lambda x: x['engine'], dbs)
+        if len(db_depends_on):
+            if 'depends_on' in repo:
+                repo['depends_on'].extend(db_depends_on)
+            else:
+                repo['depends_on'] = db_depends_on
+
 
         writeRepoCompose(project, repo)
 
