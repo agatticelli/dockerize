@@ -181,6 +181,9 @@ def writeService(project, repo, rType, extra):
             }
         }
 
+        if "build_args" in repo:
+            dataToWrite[repoName]['build']['args'] = repo['build_args']
+
         if "hostname" in repo:
             dataToWrite[repoName]["hostname"] = repo["hostname"]
 
